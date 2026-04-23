@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+logs/
+*.log
+.DS_Store
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# Data files
+*.csv
+*.parquet
+data/
+
+# Model artifacts
+*.pkl
+*.joblib
+*.h5
+*.keras
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db

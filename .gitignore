@@ -26,3 +26,10 @@ data/
 
 # OS
 Thumbs.db
+
+# API cache
+.cache.sqlite
+*.sqlite
+
+# Working notes — not for public repo
+notes.md

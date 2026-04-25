@@ -1,0 +1,237 @@
+"""
+Backfill script — one-time seeding of historical data for training.
+
+Fetches ~1 year of hourly air quality + weather data for Karachi from
+Open-Meteo's archive endpoints, cleans it, engineers features, and saves
+to a local parquet file.
+
+This is a dev-stage artifact. On Days 5-7 the write target becomes the
+Hopsworks feature group, not local parquet.
+
+Usage:
+    python -m pipelines.backfill
+    python -m pipelines.backfill --start 2025-04-25 --end 2026-04-24
+"""
+
+import argparse
+import sys
+from datetime import date, timedelta
+from pathlib import Path
+
+import openmeteo_requests
+import pandas as pd
+import requests_cache
+from retry_requests import retry
+
+# Make project-root imports work when run as a script
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from config.config import (
+    API_RETRY_BASE_DELAY,
+    API_RETRY_COUNT,
+    BACKFILL_START_DATE,
+    KARACHI_LAT,
+    KARACHI_LON,
+)
+from utils.features import clean_raw_data, engineer_features
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+# Open-Meteo archive endpoints (undocumented but stable for air quality;
+# official for weather).
+AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+WEATHER_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
+
+# Local output during dev. Ignored by git (*.parquet in .gitignore).
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data"
+OUTPUT_PATH = OUTPUT_DIR / "backfill.parquet"
+
+
+# ========================================================================
+# API client
+# ========================================================================
+
+def _make_client() -> openmeteo_requests.Client:
+    """Cached + retrying Open-Meteo client."""
+    cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
+    retry_session = retry(
+        cache_session,
+        retries=API_RETRY_COUNT,
+        backoff_factor=API_RETRY_BASE_DELAY / 10,
+    )
+    return openmeteo_requests.Client(session=retry_session)
+
+
+# ========================================================================
+# Fetchers
+# ========================================================================
+
+def fetch_air_quality(
+    client: openmeteo_requests.Client,
+    lat: float,
+    lon: float,
+    start_date: str,
+    end_date: str,
+) -> pd.DataFrame:
+    """Pull historical hourly air quality for the given date range."""
+    logger.info(
+        "Fetching air quality: lat=%s lon=%s start=%s end=%s",
+        lat, lon, start_date, end_date,
+    )
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": [
+            "pm2_5",
+            "pm10",
+            "nitrogen_dioxide",
+            "ozone",
+            "sulphur_dioxide",
+            "carbon_monoxide",
+        ],
+        "start_date": start_date,
+        "end_date": end_date,
+        "timezone": "UTC",
+    }
+
+    responses = client.weather_api(AIR_QUALITY_URL, params=params)
+    response = responses[0]
+    hourly = response.Hourly()
+
+    df = pd.DataFrame({
+        "timestamp": pd.date_range(
+            start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+            end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+            freq=pd.Timedelta(seconds=hourly.Interval()),
+            inclusive="left",
+        ),
+        "pm2_5": hourly.Variables(0).ValuesAsNumpy(),
+        "pm10":  hourly.Variables(1).ValuesAsNumpy(),
+        "no2":   hourly.Variables(2).ValuesAsNumpy(),
+        "o3":    hourly.Variables(3).ValuesAsNumpy(),
+        "so2":   hourly.Variables(4).ValuesAsNumpy(),
+        "co":    hourly.Variables(5).ValuesAsNumpy(),
+    })
+
+    logger.info("Air quality: %d rows fetched", len(df))
+    return df
+
+
+def fetch_weather(
+    client: openmeteo_requests.Client,
+    lat: float,
+    lon: float,
+    start_date: str,
+    end_date: str,
+) -> pd.DataFrame:
+    """Pull historical hourly weather (ERA5 reanalysis)."""
+    logger.info(
+        "Fetching weather archive: lat=%s lon=%s start=%s end=%s",
+        lat, lon, start_date, end_date,
+    )
+
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "wind_speed_10m",
+            "pressure_msl",
+        ],
+        "start_date": start_date,
+        "end_date": end_date,
+        "timezone": "UTC",
+    }
+
+    responses = client.weather_api(WEATHER_ARCHIVE_URL, params=params)
+    response = responses[0]
+    hourly = response.Hourly()
+
+    df = pd.DataFrame({
+        "timestamp": pd.date_range(
+            start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+            end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+            freq=pd.Timedelta(seconds=hourly.Interval()),
+            inclusive="left",
+        ),
+        "temperature": hourly.Variables(0).ValuesAsNumpy(),
+        "humidity":    hourly.Variables(1).ValuesAsNumpy(),
+        "wind_speed":  hourly.Variables(2).ValuesAsNumpy(),
+        "pressure":    hourly.Variables(3).ValuesAsNumpy(),
+    })
+
+    logger.info("Weather: %d rows fetched", len(df))
+    return df
+
+
+# ========================================================================
+# Orchestration
+# ========================================================================
+
+def run_backfill(start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    Full backfill: fetch, merge, clean, engineer features.
+    Returns the final feature DataFrame.
+    """
+    client = _make_client()
+
+    aq_df = fetch_air_quality(client, KARACHI_LAT, KARACHI_LON, start_date, end_date)
+    weather_df = fetch_weather(client, KARACHI_LAT, KARACHI_LON, start_date, end_date)
+
+    logger.info("Merging air quality + weather on timestamp")
+    merged = pd.merge(aq_df, weather_df, on="timestamp", how="inner")
+    logger.info("Merged: %d rows, %d columns", len(merged), len(merged.columns))
+
+    logger.info("Cleaning raw data")
+    cleaned = clean_raw_data(merged)
+    logger.info("After cleaning: %d rows (%d dropped)",
+                len(cleaned), len(merged) - len(cleaned))
+
+    logger.info("Engineering features")
+    features = engineer_features(cleaned)
+    logger.info(
+        "Feature DataFrame: %d rows, %d columns, has_target sum = %d",
+        len(features), len(features.columns), int(features["has_target"].sum()),
+    )
+
+    return features
+
+
+def save_local(df: pd.DataFrame, path: Path = OUTPUT_PATH) -> None:
+    """Write backfill DataFrame to a local parquet file (dev only)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(path, index=False)
+    logger.info("Saved backfill to %s (%d rows)", path, len(df))
+
+
+# ========================================================================
+# CLI
+# ========================================================================
+
+def _parse_args() -> argparse.Namespace:
+    default_end = (date.today() - timedelta(days=1)).isoformat()
+    parser = argparse.ArgumentParser(description="Backfill Karachi AQI features")
+    parser.add_argument("--start", default=BACKFILL_START_DATE,
+                        help="Start date (YYYY-MM-DD). Default from config.")
+    parser.add_argument("--end", default=default_end,
+                        help="End date (YYYY-MM-DD). Default: yesterday.")
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+    logger.info("Starting backfill: %s to %s", args.start, args.end)
+    try:
+        features = run_backfill(args.start, args.end)
+        save_local(features)
+        logger.info("Backfill complete.")
+    except Exception as exc:
+        logger.exception("Backfill failed: %s", exc)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

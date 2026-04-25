@@ -96,6 +96,11 @@ def _sub_index(concentration: float, breakpoints: list) -> Optional[float]:
     Compute the AQI sub-index for a single pollutant via piecewise linear
     interpolation against its breakpoint table.
 
+    The breakpoint table has small gaps between adjacent bands (e.g. PM10's
+    upper bound 54 and next lower bound 55). To avoid a concentration
+    falling into none of the bands, we treat each band as covering the
+    range [c_lo, next_c_lo), with the final band closed on both ends.
+
     Returns None if concentration is negative or NaN.
     Concentrations above the top breakpoint are capped at 500.
     """
@@ -110,8 +115,15 @@ def _sub_index(concentration: float, breakpoints: list) -> Optional[float]:
     if c < 0:
         return None
 
-    for c_lo, c_hi, i_lo, i_hi in breakpoints:
-        if c_lo <= c <= c_hi:
+    n = len(breakpoints)
+    for i, (c_lo, c_hi, i_lo, i_hi) in enumerate(breakpoints):
+        # Use the next band's lower bound as this band's exclusive upper
+        # bound, closing the gap. For the final band, use its own c_hi
+        # inclusively.
+        upper = breakpoints[i + 1][0] if i + 1 < n else c_hi
+        is_final = i + 1 == n
+        in_band = (c_lo <= c <= upper) if is_final else (c_lo <= c < upper)
+        if in_band:
             return ((i_hi - i_lo) / (c_hi - c_lo)) * (c - c_lo) + i_lo
 
     # Above the highest breakpoint — cap at 500

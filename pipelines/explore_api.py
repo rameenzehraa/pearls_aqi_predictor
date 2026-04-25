@@ -19,15 +19,13 @@ import requests_cache
 from retry_requests import retry
 import pandas as pd
 
-from config.config import SUBDIVISIONS
-
+from config.config import KARACHI_LAT, KARACHI_LON
 
 def main():
     # Pick one subdivision to start — SITE is a good choice
     # (industrial area, AQI variation should be visible)
-    test_subdivision = "SITE"
-    lat, lon = SUBDIVISIONS[test_subdivision]
-    print(f"Testing with: {test_subdivision} ({lat}, {lon})")
+    lat, lon = KARACHI_LAT, KARACHI_LON
+    print(f"Testing with Karachi centroid ({lat}, {lon})")
     print()
 
     # Set up Open-Meteo client with caching (1 hour) and retries

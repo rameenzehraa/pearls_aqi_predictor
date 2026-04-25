@@ -120,3 +120,58 @@ class TestGetCategoryLabel:
 
     def test_none_returns_none(self):
         assert get_category_label(None) is None
+
+
+class TestBreakpointGaps:
+    """
+    Regression tests: the EPA breakpoint tables have small numeric gaps
+    between adjacent bands (e.g. PM10 (0-54) and (55-154) leave 54.0-55.0
+    uncovered). The sub-index function must close these gaps; otherwise
+    real-world readings can fall through and incorrectly cap at AQI 500.
+    """
+
+    def test_pm10_in_band_gap_does_not_cap_at_500(self):
+        # 54.9 sits between (0,54) and (55,154). Should be ~50, NOT 500.
+        aqi = compute_aqi(pm10=54.9)
+        assert aqi is not None
+        assert aqi < 100   # well within Good band, nowhere near 500
+
+    def test_pm25_in_band_gap(self):
+        # 9.05 sits between (0,9.0) and (9.1,35.4)
+        aqi = compute_aqi(pm2_5=9.05)
+        assert aqi is not None
+        assert aqi < 60
+
+    def test_o3_in_band_gap(self):
+        # 108.5 sits between (0,108) and (109,140)
+        aqi = compute_aqi(o3=108.5)
+        assert aqi is not None
+        assert aqi < 60
+
+    def test_so2_in_band_gap(self):
+        # 92.5 sits between (0,92) and (93,197)
+        aqi = compute_aqi(so2=92.5)
+        assert aqi is not None
+        assert aqi < 60
+
+    def test_no2_in_band_gap(self):
+        # 100.5 sits between (0,100) and (101,188)
+        aqi = compute_aqi(no2=100.5)
+        assert aqi is not None
+        assert aqi < 60
+
+    def test_co_in_band_gap(self):
+        # CO of 5050 µg/m³ → 5.05 mg/m³, between (0,5.0) and (5.1,10.5)
+        aqi = compute_aqi(co=5050)
+        assert aqi is not None
+        assert aqi < 60
+
+    def test_pm10_top_of_good_band(self):
+        # PM10 = 54 → AQI exactly 50
+        aqi = compute_aqi(pm10=54)
+        assert aqi == 50.0
+
+    def test_pm10_bottom_of_moderate_band(self):
+        # PM10 = 55 → AQI exactly 51
+        aqi = compute_aqi(pm10=55)
+        assert aqi == 51.0

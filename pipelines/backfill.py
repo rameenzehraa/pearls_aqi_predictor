@@ -1,16 +1,24 @@
 """
-Backfill script — one-time seeding of historical data for training.
+Backfill script — one-time seeding of historical data.
 
 Fetches ~1 year of hourly air quality + weather data for Karachi from
-Open-Meteo's archive endpoints, cleans it, engineers features, and saves
-to a local parquet file.
+Open-Meteo's archive endpoints, cleans it, engineers features, and
+writes to:
 
-This is a dev-stage artifact. On Days 5-7 the write target becomes the
-Hopsworks feature group, not local parquet.
+    1. Hopsworks feature group `aqi_features` v1  (PRIMARY destination,
+       used by all production training and serving code)
+    2. Local parquet at data/backfill.parquet     (BACKUP only — never
+       read by training, feature, backend, or frontend code paths.
+       Exists for disaster recovery and EDA notebook speed.)
+
+Architecture rule (Draft 6, coordinator MOM): production code reads
+from Hopsworks only. The local file is a cold backup, not a cache.
 
 Usage:
     python -m pipelines.backfill
     python -m pipelines.backfill --start 2025-04-25 --end 2026-04-24
+    python -m pipelines.backfill --skip-hopsworks   (dev/debug only)
+    python -m pipelines.backfill --skip-local       (Hopsworks only)
 """
 
 import argparse
@@ -43,9 +51,19 @@ logger = get_logger(__name__)
 AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 WEATHER_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
-# Local output during dev. Ignored by git (*.parquet in .gitignore).
+# Local backup path. Gitignored. NEVER read by production code.
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "data"
-OUTPUT_PATH = OUTPUT_DIR / "backfill.parquet"
+LOCAL_BACKUP_PATH = OUTPUT_DIR / "backfill.parquet"
+
+# Hopsworks feature group config
+FEATURE_GROUP_NAME = "aqi_features"
+FEATURE_GROUP_VERSION = 1
+PRIMARY_KEY = ["timestamp"]
+EVENT_TIME_COLUMN = "timestamp"
+FEATURE_GROUP_DESCRIPTION = (
+    "Hourly Karachi AQI features: pollutants, weather, time-of-day, "
+    "rolling stats, lagged values, and 24/48/72h AQI targets."
+)
 
 
 # ========================================================================
@@ -200,11 +218,43 @@ def run_backfill(start_date: str, end_date: str) -> pd.DataFrame:
     return features
 
 
-def save_local(df: pd.DataFrame, path: Path = OUTPUT_PATH) -> None:
-    """Write backfill DataFrame to a local parquet file (dev only)."""
+def write_to_hopsworks(df: pd.DataFrame) -> None:
+    """Write feature DataFrame to the Hopsworks feature store (PRIMARY)."""
+    # Imported lazily so the script can still run with --skip-hopsworks
+    # if Hopsworks credentials aren't available.
+    from utils.hopsworks_client import get_feature_store
+
+    logger.info("Connecting to Hopsworks feature store")
+    fs = get_feature_store()
+
+    logger.info(
+        "Getting or creating feature group: %s (v%d)",
+        FEATURE_GROUP_NAME, FEATURE_GROUP_VERSION,
+    )
+    fg = fs.get_or_create_feature_group(
+        name=FEATURE_GROUP_NAME,
+        version=FEATURE_GROUP_VERSION,
+        primary_key=PRIMARY_KEY,
+        event_time=EVENT_TIME_COLUMN,
+        description=FEATURE_GROUP_DESCRIPTION,
+        online_enabled=False,
+    )
+
+    logger.info("Inserting %d rows into Hopsworks", len(df))
+    fg.insert(df, write_options={"wait_for_job": True})
+    logger.info("Hopsworks insert complete.")
+
+
+def write_local_backup(df: pd.DataFrame, path: Path = LOCAL_BACKUP_PATH) -> None:
+    """
+    Write feature DataFrame to a local parquet file.
+
+    BACKUP ONLY. Never read by training, feature, backend, or frontend
+    code paths. Used for disaster recovery and EDA notebook speed.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
-    logger.info("Saved backfill to %s (%d rows)", path, len(df))
+    logger.info("Local backup written to %s (%d rows)", path, len(df))
 
 
 # ========================================================================
@@ -218,15 +268,34 @@ def _parse_args() -> argparse.Namespace:
                         help="Start date (YYYY-MM-DD). Default from config.")
     parser.add_argument("--end", default=default_end,
                         help="End date (YYYY-MM-DD). Default: yesterday.")
+    parser.add_argument("--skip-hopsworks", action="store_true",
+                        help="Skip Hopsworks write (dev/debug only).")
+    parser.add_argument("--skip-local", action="store_true",
+                        help="Skip local backup write (Hopsworks only).")
     return parser.parse_args()
 
 
 def main() -> None:
     args = _parse_args()
     logger.info("Starting backfill: %s to %s", args.start, args.end)
+
+    if args.skip_hopsworks and args.skip_local:
+        logger.error("Cannot skip both Hopsworks and local. Aborting.")
+        sys.exit(1)
+
     try:
         features = run_backfill(args.start, args.end)
-        save_local(features)
+
+        if not args.skip_hopsworks:
+            write_to_hopsworks(features)
+        else:
+            logger.warning("--skip-hopsworks set; Hopsworks write skipped.")
+
+        if not args.skip_local:
+            write_local_backup(features)
+        else:
+            logger.warning("--skip-local set; local backup skipped.")
+
         logger.info("Backfill complete.")
     except Exception as exc:
         logger.exception("Backfill failed: %s", exc)

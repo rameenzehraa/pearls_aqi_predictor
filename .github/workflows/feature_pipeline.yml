@@ -1,0 +1,41 @@
+name: Feature Pipeline (hourly)
+
+on:
+  # Manual trigger — used for first-run testing before enabling cron
+  workflow_dispatch:
+
+  # Cron — DISABLED for now. Uncomment after manual run is verified.
+  # schedule:
+  #   - cron: '5 * * * *'   # every hour at minute 5 (gives Open-Meteo time to publish)
+
+# Prevent overlapping runs if a previous run is still going
+concurrency:
+  group: feature-pipeline
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run feature pipeline
+        env:
+          HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+        run: |
+          python -m pipelines.feature_pipeline

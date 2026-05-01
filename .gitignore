@@ -33,3 +33,6 @@ Thumbs.db
 
 # Working notes - not for public repo
 notes.md
+
+# pip freeze artifacts (debug only)
+requirements_full.txt

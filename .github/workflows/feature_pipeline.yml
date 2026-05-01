@@ -4,9 +4,9 @@ on:
   # Manual trigger — used for first-run testing before enabling cron
   workflow_dispatch:
 
-  # Cron — DISABLED for now. Uncomment after manual run is verified.
-  # schedule:
-  #   - cron: '5 * * * *'   # every hour at minute 5 (gives Open-Meteo time to publish)
+  # Hourly at minute 5 — gives Open-Meteo time to publish the latest hour
+  schedule:
+    - cron: '5 * * * *'
 
 # Prevent overlapping runs if a previous run is still going
 concurrency:

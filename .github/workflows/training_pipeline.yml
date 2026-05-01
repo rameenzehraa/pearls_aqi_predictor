@@ -3,9 +3,9 @@ name: Training Pipeline (daily)
 on:
   workflow_dispatch:
 
-  # Cron — DISABLED for now. Uncomment after manual run is verified.
-  # schedule:
-  #   - cron: '0 2 * * *'   # daily at 02:00 UTC
+  # Daily at 02:00 UTC (07:00 PKT)
+  schedule:
+    - cron: '0 2 * * *'
 
 concurrency:
   group: training-pipeline

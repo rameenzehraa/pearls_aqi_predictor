@@ -108,3 +108,6 @@ def quantile_coverage(
 
     inside = (y_true[mask] >= y_lo[mask]) & (y_true[mask] <= y_hi[mask])
     return round(float(inside.mean()), 4)
+
+evaluate = regression_metrics
+print_metrics_table = print_metrics_by_horizon

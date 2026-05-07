@@ -1,0 +1,69 @@
+{
+  "trained_at_utc": "2026-05-07T19:07:40.965934+00:00",
+  "n_rows_loaded": 8952,
+  "features": [
+    "aqi",
+    "month",
+    "aqi_lag_24h",
+    "aqi_lag_72h",
+    "humidity"
+  ],
+  "ridge_alpha": 10.0,
+  "holdout_frac": 0.2,
+  "horizons": [
+    {
+      "horizon": 24,
+      "metrics": {
+        "r2": 0.3496,
+        "rmse": 20.15,
+        "mae": 15.05
+      },
+      "n_train": 7008,
+      "n_test": 1752,
+      "coefficients": {
+        "aqi": 12.8836,
+        "month": 0.9607,
+        "aqi_lag_24h": 3.0127,
+        "aqi_lag_72h": 1.7375,
+        "humidity": -4.4265
+      },
+      "intercept": 94.7208
+    },
+    {
+      "horizon": 48,
+      "metrics": {
+        "r2": 0.1805,
+        "rmse": 22.64,
+        "mae": 16.76
+      },
+      "n_train": 6988,
+      "n_test": 1748,
+      "coefficients": {
+        "aqi": 8.6744,
+        "month": 1.7901,
+        "aqi_lag_24h": 2.6232,
+        "aqi_lag_72h": 3.4625,
+        "humidity": -4.4761
+      },
+      "intercept": 94.7238
+    },
+    {
+      "horizon": 72,
+      "metrics": {
+        "r2": 0.1294,
+        "rmse": 23.35,
+        "mae": 17.5
+      },
+      "n_train": 6969,
+      "n_test": 1743,
+      "coefficients": {
+        "aqi": 6.4697,
+        "month": 2.6997,
+        "aqi_lag_24h": 2.9175,
+        "aqi_lag_72h": 3.2098,
+        "humidity": -4.3889
+      },
+      "intercept": 94.7644
+    }
+  ]
+}

@@ -36,3 +36,8 @@ notes.md
 
 # pip freeze artifacts (debug only)
 requirements_full.txt
+
+# Force-include champion artifacts and analysis outputs
+!models/champion/**/*.joblib
+!models/champion/**/*.json
+!artifacts/**/*.csv

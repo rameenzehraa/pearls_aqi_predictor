@@ -41,3 +41,4 @@ requirements_full.txt
 !models/champion/**/*.joblib
 !models/champion/**/*.json
 !artifacts/**/*.csv
+!models/cqr/**/*.joblib

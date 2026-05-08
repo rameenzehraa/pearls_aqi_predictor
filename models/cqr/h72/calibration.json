@@ -1,0 +1,17 @@
+{
+  "method": "split_conformal_cqr_symmetric_hybrid",
+  "notes": "Point predictions sourced from production champion (models/champion). QR residuals + Q_widen derived from train_proper/calibration split. Locally-valid conformal.",
+  "Q": 19.266706587132177,
+  "Q_widen": 19.266706587132177,
+  "low_q": 0.1,
+  "high_q": 0.9,
+  "alpha": 0.19999999999999996,
+  "qr_alpha": 0.001,
+  "ridge_alpha": 10.0,
+  "n_train_proper": 4878,
+  "n_calibration": 2091,
+  "n_holdout": 1743,
+  "holdout_coverage": 0.868,
+  "holdout_avg_width": 63.6,
+  "production_point_r2": 0.1294
+}

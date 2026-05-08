@@ -23,3 +23,5 @@ plotly==6.7.0
 
 # Plotting backend that Streamlit needs
 altair==6.1.0
+
+python-dotenv==1.2.2

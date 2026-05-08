@@ -107,18 +107,18 @@ current_cat = aqi_to_category(current_aqi)
 # Data freshness warning
 # ========================================================================
 
-now_utc = pd.Timestamp.now(tz="UTC")
-data_age_hours = (now_utc - latest["timestamp"]).total_seconds() / 3600
+# now_utc = pd.Timestamp.now(tz="UTC")
+# data_age_hours = (now_utc - latest["timestamp"]).total_seconds() / 3600
 
-if data_age_hours > 3:
-    hours_str = f"{int(data_age_hours)}h" if data_age_hours < 48 else f"{int(data_age_hours / 24)}d"
-    st.warning(
-        f"⚠️ **Data is {hours_str} old.** "
-        f"The most recent reading is from {format_pkt(latest['timestamp'])}. "
-        f"This usually means Open-Meteo hasn't published fresh data yet, or "
-        f"the hourly ingestion pipeline is catching up. Forecasts below are "
-        f"computed from this last available reading."
-    )
+# if data_age_hours > 3:
+#     hours_str = f"{int(data_age_hours)}h" if data_age_hours < 48 else f"{int(data_age_hours / 24)}d"
+#     st.warning(
+#         f"⚠️ **Data is {hours_str} old.** "
+#         f"The most recent reading is from {format_pkt(latest['timestamp'])}. "
+#         f"This usually means Open-Meteo hasn't published fresh data yet, or "
+#         f"the hourly ingestion pipeline is catching up. Forecasts below are "
+#         f"computed from this last available reading."
+#     )
 
 
 # ========================================================================

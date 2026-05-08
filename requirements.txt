@@ -1,48 +1,25 @@
 # ============================================================
-# Pearls AQI Predictor — runtime dependencies
+# Pearls AQI Predictor — dashboard runtime (slim)
 # ============================================================
-# Pinned versions verified working as of 2026-05-01.
-# Linux-compatible — used by GitHub Actions runners.
+# Used by Streamlit Community Cloud. Excludes training-only
+# packages (TF, XGBoost, SHAP) and dev tooling (pytest, flask).
 #
-# NOTE: On Windows local dev, twofish must be installed via:
-#   conda install -c conda-forge twofish
-# This is a one-time setup quirk; Linux installs it fine via pip.
+# Versions match local dev environment.
 
 # Core data / numeric
 pandas==2.2.3
 numpy==1.26.4
 pyarrow==24.0.0
 
-# API client (Open-Meteo)
-openmeteo-requests==1.7.5
-requests==2.33.1
-requests-cache==1.3.0
-retry-requests==2.0.0
-
-# Configuration
-python-dotenv==1.2.2
-
-# Feature store + model registry
+# Feature store (read-only access)
 hopsworks==4.8.1
-confluent-kafka==2.14.0
 
-# ML — classical
+# ML — only what's needed to LOAD pickled models
 scikit-learn==1.5.2
-xgboost==2.1.2
-
-# ML — deep learning
-tensorflow==2.18.0
-
-# Explainability
-shap==0.46.0
-
-# Backend API
-flask==3.1.0
-gunicorn==23.0.0
 
 # Frontend
-streamlit==1.40.1
-plotly==5.24.1
+streamlit==1.57.0
+plotly==6.7.0
 
-# Testing
-pytest==9.0.3
+# Plotting backend that Streamlit needs
+altair==6.1.0

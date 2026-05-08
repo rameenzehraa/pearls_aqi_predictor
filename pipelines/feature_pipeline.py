@@ -164,7 +164,22 @@ def fetch_recent_history(fg, hours: int = HISTORY_LOOKBACK_HOURS) -> pd.DataFram
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     logger.info("Reading Hopsworks rows from %s onward", cutoff.isoformat())
 
-    df = fg.read()
+    # Try Arrow Flight first (fast). On transient socket drops, fall back
+    # to JDBC/Hive (slower but more stable). This handles Hopsworks free-tier
+    # gRPC failures without crashing the whole run.
+    try:
+        df = fg.read()
+    except Exception as exc:
+        msg = str(exc)
+        if any(s in msg for s in ("Flight", "Socket closed", "Query Service")):
+            logger.warning(
+                "Arrow Flight read failed (%s). Falling back to JDBC/Hive read.",
+                type(exc).__name__,
+            )
+            df = fg.read(read_options={"use_hive": True})
+        else:
+            raise
+
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df = df[df["timestamp"] >= cutoff].sort_values("timestamp")
     logger.info("History from Hopsworks: %d rows", len(df))

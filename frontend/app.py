@@ -19,7 +19,7 @@ import streamlit as st
 # Make project-root imports work when launched via `streamlit run`
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from dashboard.utils import (
+from frontend.utils import (
     HORIZONS,
     aqi_to_category,
     fetch_current_conditions,

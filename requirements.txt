@@ -1,27 +1,25 @@
 # ============================================================
 # Pearls AQI Predictor — dashboard runtime (slim)
 # ============================================================
-# Used by Streamlit Community Cloud. Excludes training-only
-# packages (TF, XGBoost, SHAP) and dev tooling (pytest, flask).
+# Used by Streamlit Community Cloud.
+#
+# The dashboard is now a thin client that calls the Flask backend
+# (deployed on Render) over HTTP. No direct Hopsworks or model
+# dependencies needed here — those live in requirements-backend.txt.
 #
 # Versions match local dev environment.
 
 # Core data / numeric
 pandas==2.2.3
 numpy==1.26.4
-pyarrow==24.0.0
-
-# Feature store (read-only access)
-hopsworks==4.8.1
-
-# ML — only what's needed to LOAD pickled models
-scikit-learn==1.5.2
 
 # Frontend
 streamlit==1.57.0
 plotly==6.7.0
-
-# Plotting backend that Streamlit needs
 altair==6.1.0
 
+# HTTP client for backend calls
+requests==2.33.1
+
+# Config / secrets loading
 python-dotenv==1.2.2

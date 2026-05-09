@@ -151,6 +151,16 @@ def main() -> None:
         json.dump(summary, f, indent=2)
     logger.info("Saved %s", metadata_path)
 
+    # Also copy metadata into each per-horizon directory so the Hopsworks
+    # Model Registry artifact includes it (registry uploads per-horizon
+    # dirs, not the parent). Lets the backend display training metrics
+    # without needing a separate metadata-fetching step.
+    for h in HORIZONS:
+        horizon_dir = ARTIFACTS_DIR / f"h{h}"
+        if horizon_dir.exists():
+            with open(horizon_dir / "champion_metadata.json", "w") as f:
+                json.dump(summary, f, indent=2)
+
     # Print final summary
     print("\n" + "=" * 60)
     print("CHAMPION TRAINING COMPLETE")

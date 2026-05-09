@@ -1,7 +1,11 @@
 """
-Day 11 Task 5 — Register champion + CQR models to Hopsworks Model Registry.
+Register champion + CQR models to Hopsworks Model Registry.
 
-Registers six models, version 1 each:
+Created on Day 11 (Task 5) for initial registration. Now also called by
+the daily training pipeline — Hopsworks auto-increments the model version
+on each call, building a full retraining history.
+
+Registers six models per call:
   karachi_aqi_ridge_{24,48,72}h  — production champion (point prediction)
   karachi_aqi_cqr_{24,48,72}h    — conformal interval system
 
@@ -53,7 +57,6 @@ def register_champion(mr, horizon: int, champion_meta: dict) -> None:
     logger.info("Registering %s …", name)
     model = mr.python.create_model(
         name=name,
-        version=1,
         metrics=metrics,
         description=description,
         feature_view=None,  # we use raw feature group
@@ -90,7 +93,6 @@ def register_cqr(mr, horizon: int) -> None:
     logger.info("Registering %s …", name)
     model = mr.python.create_model(
         name=name,
-        version=1,
         metrics=metrics,
         description=description,
         feature_view=None,
@@ -122,15 +124,15 @@ def main() -> None:
     for h in HORIZONS:
         register_cqr(mr, h)
 
-    print("\n" + "=" * 60)
-    print("REGISTRATION COMPLETE — 6 models registered, v1 each")
+    print("=" * 60)
+    print("REGISTRATION COMPLETE — 6 models registered (auto-versioned)")
     print("=" * 60)
     print("Champion (point predictions):")
     for h in HORIZONS:
-        print(f"  karachi_aqi_ridge_{h}h v1")
+        print(f"  karachi_aqi_ridge_{h}h")
     print("CQR (interval predictions):")
     for h in HORIZONS:
-        print(f"  karachi_aqi_cqr_{h}h v1")
+        print(f"  karachi_aqi_cqr_{h}h")
     print()
     print(f"View at: https://eu-west.cloud.hopsworks.ai:443/p/32001")
 

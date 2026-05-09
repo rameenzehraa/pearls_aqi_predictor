@@ -20,12 +20,10 @@ Deploy:
     See backend/Procfile for the production start command.
 """
 
-import json
 import os
 import sys
 from pathlib import Path
 
-import joblib
 import pandas as pd
 from flask import Flask, jsonify, request
 
@@ -33,19 +31,15 @@ from flask import Flask, jsonify, request
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.auth import require_api_key
+from backend.model_loader import load_all_models, load_metadata
 from utils.hopsworks_client import get_feature_store
 
 # ========================================================================
 # Constants and paths
 # ========================================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CHAMPION_DIR = PROJECT_ROOT / "models" / "champion"
-CQR_DIR = PROJECT_ROOT / "models" / "cqr"
-
 HORIZONS = [24, 48, 72]
 CHAMPION_FEATURES = ["aqi", "month", "aqi_lag_24h", "aqi_lag_72h", "humidity"]
-
 
 # ========================================================================
 # App setup + model loading at startup
@@ -53,29 +47,6 @@ CHAMPION_FEATURES = ["aqi", "month", "aqi_lag_24h", "aqi_lag_72h", "humidity"]
 
 app = Flask(__name__)
 
-
-def load_all_models():
-    """Load all 6 models into memory once at startup."""
-    champion = {}
-    cqr = {}
-    for h in HORIZONS:
-        ch_dir = CHAMPION_DIR / f"h{h}"
-        cq_dir = CQR_DIR / f"h{h}"
-        champion[h] = {
-            "model": joblib.load(ch_dir / "ridge_model.joblib"),
-            "scaler": joblib.load(ch_dir / "scaler.joblib"),
-        }
-        cqr[h] = {
-            "p10": joblib.load(cq_dir / "quantile_p10.joblib"),
-            "p90": joblib.load(cq_dir / "quantile_p90.joblib"),
-            "scaler": joblib.load(cq_dir / "scaler.joblib"),
-            "calibration": json.loads((cq_dir / "calibration.json").read_text()),
-        }
-    return champion, cqr
-
-
-def load_metadata():
-    return json.loads((CHAMPION_DIR / "champion_metadata.json").read_text())
 
 
 # Loaded once when the Flask process starts. On Render, this happens

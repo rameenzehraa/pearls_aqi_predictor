@@ -22,7 +22,7 @@ from utils.hopsworks_client import get_feature_store
 from utils.logger import get_logger
 
 # Import the actual training entry points.
-from models import train_champion, conformal_intervals
+from models import train_champion, conformal_intervals, register_to_registry
 
 logger = get_logger(__name__)
 
@@ -79,15 +79,21 @@ def main() -> None:
 
         # 2) Retrain the 3 Ridge champions (one per horizon)
         logger.info("=" * 60)
-        logger.info("Step 1/2: retraining Ridge champions")
+        logger.info("Step 1/3: retraining Ridge champions")
         logger.info("=" * 60)
         train_champion.main()
 
         # 3) Recalibrate CQR intervals on the fresh champion
         logger.info("=" * 60)
-        logger.info("Step 2/2: recalibrating CQR conformal intervals")
+        logger.info("Step 2/3: recalibrating CQR conformal intervals")
         logger.info("=" * 60)
         conformal_intervals.main()
+
+        # 4) Push fresh artifacts to Hopsworks Model Registry (auto-versioned)
+        logger.info("=" * 60)
+        logger.info("Step 3/3: registering models to Hopsworks Model Registry")
+        logger.info("=" * 60)
+        register_to_registry.main()
 
         logger.info("=" * 60)
         logger.info("Daily training pipeline complete.")

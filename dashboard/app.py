@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dashboard.utils import (
     HORIZONS,
     aqi_to_category,
+    fetch_current_conditions,
     fetch_recent_features,
     format_pkt,
     load_champion_metadata,
@@ -98,10 +99,9 @@ if features.empty:
     st.stop()
 
 predictions = make_predictions(features, champion, cqr)
-latest = features.iloc[-1]
-current_aqi = float(latest["aqi"])
+latest = fetch_current_conditions()
+current_aqi = latest["aqi"]
 current_cat = aqi_to_category(current_aqi)
-
 
 # ========================================================================
 # Data freshness warning

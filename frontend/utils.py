@@ -36,7 +36,7 @@ PKT_OFFSET = pd.Timedelta(hours=5)
 
 # Backend timeout — Render free tier cold starts can take 30-60s,
 # and Hopsworks reads on top of that take another 30-60s. Be generous.
-REQUEST_TIMEOUT = 120
+REQUEST_TIMEOUT = 180
 
 
 # ========================================================================
@@ -85,6 +85,26 @@ def _api_get(path: str, params: dict | None = None) -> dict:
     )
     response.raise_for_status()
     return response.json()
+
+
+def warmup_backend() -> bool:
+    """
+    Hit the lightweight /health endpoint first to wake up Render's
+    free-tier container before slower endpoints time out.
+
+    /health doesn't require auth and doesn't query Hopsworks, so it
+    returns in <1s when warm and ~10-15s when cold.
+
+    Returns True if the backend responded, False otherwise.
+    """
+    try:
+        url = get_backend_url() + "/health"
+        # Slightly shorter timeout — if /health takes >60s something
+        # is genuinely wrong and we want to fail fast, not wait 3 min
+        requests.get(url, timeout=60)
+        return True
+    except Exception:
+        return False
 
 
 # ========================================================================

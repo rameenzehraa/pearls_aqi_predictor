@@ -113,9 +113,17 @@ with refresh_col:
         st.rerun()
 
 # Loading spinner while we hit Hopsworks
+# Pre-warm the Render backend before slow endpoints. This wakes up the
+# free-tier container with a fast /health call so subsequent calls to
+# /predictions don't time out cold.
+from frontend.utils import warmup_backend
+
+with st.spinner("Waking up the prediction service… (free-tier cold start)"):
+    warmup_backend()
+
 load_msg = (
-    "Connecting to Hopsworks Feature Store and loading models… "
-    "(first load can take ~60 seconds while data syncs)"
+    "Loading models and fetching latest data… "
+    "(first load after idle can take ~60 seconds)"
 )
 with st.spinner(load_msg):
     champion, cqr = get_models()
@@ -335,7 +343,7 @@ fig_forecast.update_layout(
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
 )
-st.plotly_chart(fig_forecast, use_container_width=True)
+st.plotly_chart(fig_forecast, width="stretch")
 
 
 # ========================================================================
@@ -376,8 +384,7 @@ fig_hist.update_layout(
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
 )
-st.plotly_chart(fig_hist, use_container_width=True)
-
+st.plotly_chart(fig_hist, width="stretch")
 
 # ========================================================================
 # Section 5: Health advisory

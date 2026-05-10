@@ -212,10 +212,31 @@ def make_predictions(features_df: pd.DataFrame, champion=None, cqr=None) -> dict
 
 def fetch_current_conditions() -> dict:
     """
-    Helper for the dashboard to get current-snapshot fields
-    (aqi, pm2_5, pm10, temperature, humidity, timestamp_utc) from
-    the /predictions payload's `current` block.
+    Get the current air-quality snapshot.
+
+    Tries the live Open-Meteo `current` endpoint first (~15 min lag).
+    Falls back to the latest validated hourly row (the `current` block
+    of /predictions, which can be 6-24h stale) if the live endpoint
+    fails or returns nothing useful.
     """
+    # Primary path: live snapshot from /current_live
+    try:
+        live = _api_get("/current_live")
+        if live and live.get("aqi") is not None:
+            return {
+                "aqi": float(live["aqi"]),
+                "pm2_5": float(live["pm2_5"]),
+                "pm10": float(live["pm10"]),
+                "temperature": float(live["temperature"]),
+                "humidity": float(live["humidity"]),
+                "timestamp": pd.to_datetime(live["timestamp_utc"], utc=True),
+                "source": "live",  # Open-Meteo current endpoint
+            }
+    except Exception:
+        # Network error, 503, or backend issue — fall through to hourly fallback
+        pass
+
+    # Fallback: latest hourly row (can be 6-24h stale)
     payload = fetch_predictions_payload()
     cur = payload["current"]
     return {
@@ -225,4 +246,5 @@ def fetch_current_conditions() -> dict:
         "temperature": float(cur["temperature"]),
         "humidity": float(cur["humidity"]),
         "timestamp": pd.to_datetime(cur["timestamp_utc"], utc=True),
+        "source": "hourly",  # Validated hourly endpoint, may be stale
     }

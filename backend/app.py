@@ -22,9 +22,11 @@ Deploy:
 
 import os
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
+import requests
 from flask import Flask, jsonify, request
 
 # Make project-root imports work
@@ -40,6 +42,16 @@ from utils.hopsworks_client import get_feature_store
 
 HORIZONS = [24, 48, 72]
 CHAMPION_FEATURES = ["aqi", "month", "aqi_lag_24h", "aqi_lag_72h", "humidity"]
+
+# Karachi coordinates for Open-Meteo current endpoint
+KARACHI_LAT = 24.86
+KARACHI_LON = 67.01
+
+# Simple in-memory cache for /current_live (5 min TTL)
+# Open-Meteo's current endpoint refreshes every ~15 min; 5 min cache
+# avoids hammering them while keeping data fresh enough.
+_current_live_cache = {"data": None, "fetched_at": 0}
+CURRENT_LIVE_TTL = 300  # 5 minutes
 
 # ========================================================================
 # App setup + model loading at startup
@@ -179,6 +191,93 @@ def metadata():
     """Model training info."""
     return jsonify(METADATA)
 
+@app.route("/current_live", methods=["GET"])
+@require_api_key
+def current_live():
+    """
+    Live air quality snapshot from Open-Meteo's `current` endpoint.
+
+    This is for dashboard display only — the model still uses validated
+    hourly data for forecasting. The `current` endpoint is based on
+    15-minutely model data and refreshes every ~15 min, much fresher
+    than the hourly endpoint's 6-24h publishing lag.
+
+    Cached for 5 minutes to avoid hammering Open-Meteo on every
+    dashboard refresh.
+    """
+    now = time.time()
+    cache = _current_live_cache
+
+    # Return cached value if fresh
+    if cache["data"] is not None and (now - cache["fetched_at"]) < CURRENT_LIVE_TTL:
+        return jsonify({**cache["data"], "from_cache": True})
+
+    # Fetch fresh from Open-Meteo
+    try:
+        resp = requests.get(
+            "https://air-quality-api.open-meteo.com/v1/air-quality",
+            params={
+                "latitude": KARACHI_LAT,
+                "longitude": KARACHI_LON,
+                "current": (
+                    "pm2_5,pm10,us_aqi,carbon_monoxide,nitrogen_dioxide,"
+                    "sulphur_dioxide,ozone"
+                ),
+                "timezone": "UTC",
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except Exception as exc:
+        return jsonify({
+            "error": f"Open-Meteo unavailable: {exc}",
+            "fallback_required": True,
+        }), 503
+
+    # Open-Meteo's current section also includes weather; we need to fetch
+    # weather separately because the air-quality endpoint doesn't include
+    # temperature/humidity.
+    try:
+        weather_resp = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": KARACHI_LAT,
+                "longitude": KARACHI_LON,
+                "current": "temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m",
+                "timezone": "UTC",
+            },
+            timeout=10,
+        )
+        weather_resp.raise_for_status()
+        weather_payload = weather_resp.json()
+    except Exception as exc:
+        # If weather fails, we still return AQI but no temp/humidity
+        weather_payload = {"current": {}}
+
+    aqi_current = payload.get("current", {})
+    weather_current = weather_payload.get("current", {})
+
+    result = {
+        "aqi": aqi_current.get("us_aqi"),
+        "pm2_5": aqi_current.get("pm2_5"),
+        "pm10": aqi_current.get("pm10"),
+        "no2": aqi_current.get("nitrogen_dioxide"),
+        "o3": aqi_current.get("ozone"),
+        "so2": aqi_current.get("sulphur_dioxide"),
+        "co": aqi_current.get("carbon_monoxide"),
+        "temperature": weather_current.get("temperature_2m"),
+        "humidity": weather_current.get("relative_humidity_2m"),
+        "pressure": weather_current.get("pressure_msl"),
+        "wind_speed": weather_current.get("wind_speed_10m"),
+        "timestamp_utc": aqi_current.get("time"),  # ISO string from Open-Meteo
+        "source": "open-meteo-current",
+    }
+
+    cache["data"] = result
+    cache["fetched_at"] = now
+
+    return jsonify({**result, "from_cache": False})
 
 # ========================================================================
 # Local dev entrypoint

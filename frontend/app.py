@@ -69,6 +69,34 @@ def get_features():
 # Header + refresh button
 # ========================================================================
 
+# ========================================================================
+# Sidebar — dev mode controls (test alert thresholds without waiting
+# for actual unhealthy air). Hidden by default behind a single toggle.
+# ========================================================================
+
+with st.sidebar:
+    st.markdown("### 🔧 Dev Tools")
+    st.caption(
+        "These controls let you preview alert behavior at AQI levels "
+        "that may not occur in the current forecast."
+    )
+    test_mode = st.toggle("Enable AQI override", value=False)
+    test_aqi_override = None
+    if test_mode:
+        test_aqi_override = st.slider(
+            "Override forecast peak (test only)",
+            min_value=0, max_value=500, value=175, step=5,
+            help="Simulate what the dashboard looks like at this AQI level.",
+        )
+        st.caption(
+            "ℹ️ Override is local to your browser session and doesn't affect "
+            "real predictions or the underlying model."
+        )
+
+# ========================================================================
+# Header
+# ========================================================================
+
 header_col, refresh_col = st.columns([5, 1])
 
 with header_col:
@@ -79,7 +107,7 @@ with header_col:
     )
 
 with refresh_col:
-    st.write("")  # spacer for vertical alignment
+    st.write("")
     if st.button("🔄 Refresh", help="Force re-fetch from Hopsworks"):
         get_features.clear()
         st.rerun()
@@ -102,6 +130,71 @@ predictions = make_predictions(features, champion, cqr)
 latest = fetch_current_conditions()
 current_aqi = latest["aqi"]
 current_cat = aqi_to_category(current_aqi)
+
+# ========================================================================
+# Hazardous AQI alert banner (top of page, below header)
+#
+# PDF requirement: "Implement alerts for hazardous AQI levels."
+# Tiered visual escalation based on the worst forecast across horizons:
+#   - Below 101: no banner (current state, low risk)
+#   - 101-150 (USG): yellow warning banner
+#   - 151-200 (Unhealthy): orange/red warning banner
+#   - 201+ (Very Unhealthy / Hazardous): big red/purple banner
+# ========================================================================
+
+worst_pred = max(predictions.values(), key=lambda p: p["point"])
+peak_aqi = test_aqi_override if test_aqi_override is not None else int(round(worst_pred["point"]))
+peak_cat = aqi_to_category(peak_aqi)
+
+if peak_aqi >= 101:
+    # Severity-driven styling
+    if peak_aqi >= 201:
+        emoji = "🚨"
+        urgency = "HEALTH ALERT"
+        bg_intensity = "30"
+        font_size_main = "22px"
+    elif peak_aqi >= 151:
+        emoji = "⚠️"
+        urgency = "WARNING"
+        bg_intensity = "25"
+        font_size_main = "20px"
+    else:  # 101-150
+        emoji = "⚠️"
+        urgency = "ADVISORY"
+        bg_intensity = "20"
+        font_size_main = "18px"
+
+    target_str = (
+        format_pkt(worst_pred["target_time"], fmt="%a %d %b · %H:%M")
+        if test_aqi_override is None
+        else "(test override)"
+    )
+
+    st.markdown(
+        f"""
+        <div style="
+            background: {peak_cat['color']}{bg_intensity};
+            border: 2px solid {peak_cat['color']};
+            padding: 18px 22px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        ">
+            <div style="font-size: 12px; font-weight: 700; letter-spacing: 1.5px; color: {peak_cat['color']};">
+                {emoji} {urgency}
+            </div>
+            <div style="font-size: {font_size_main}; font-weight: 700; margin-top: 6px;">
+                Forecast peak: AQI {peak_aqi} — {peak_cat['name']}
+            </div>
+            <div style="font-size: 14px; margin-top: 8px; opacity: 0.9;">
+                Expected: {target_str}
+            </div>
+            <div style="font-size: 14px; margin-top: 10px; line-height: 1.5;">
+                {peak_cat['advice']}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ========================================================================
 # Data freshness warning

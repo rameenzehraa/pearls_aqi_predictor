@@ -23,6 +23,7 @@ Deploy:
 import os
 import sys
 import time
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -36,6 +37,11 @@ from backend.auth import require_api_key
 from backend.model_loader import load_all_models, load_metadata
 from utils.hopsworks_client import get_feature_store
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
+
+from config.config import KARACHI_LAT, KARACHI_LON
+
 # ========================================================================
 # Constants and paths
 # ========================================================================
@@ -43,9 +49,6 @@ from utils.hopsworks_client import get_feature_store
 HORIZONS = [24, 48, 72]
 CHAMPION_FEATURES = ["aqi", "month", "aqi_lag_24h", "aqi_lag_72h", "humidity"]
 
-# Karachi coordinates for Open-Meteo current endpoint
-KARACHI_LAT = 24.86
-KARACHI_LON = 67.01
 
 # Simple in-memory cache for /current_live (5 min TTL)
 # Open-Meteo's current endpoint refreshes every ~15 min; 5 min cache
@@ -63,10 +66,10 @@ app = Flask(__name__)
 
 # Loaded once when the Flask process starts. On Render, this happens
 # during cold start — adds ~2-3s but only on first request after sleep.
-print("[startup] Loading models...")
+logger.info("Loading models...")
 CHAMPION, CQR = load_all_models()
 METADATA = load_metadata()
-print(f"[startup] Loaded {len(CHAMPION)} champion + {len(CQR)} CQR models")
+logger.info(f"Loaded {len(CHAMPION)} champion + {len(CQR)} CQR models")
 
 
 # ========================================================================

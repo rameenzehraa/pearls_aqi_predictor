@@ -42,3 +42,7 @@ requirements_full.txt
 !models/champion/**/*.json
 !artifacts/**/*.csv
 !models/cqr/**/*.joblib
+
+# Project-specific
+AQI_predict-1.pdf
+anaconda_projects/audit_report.md 

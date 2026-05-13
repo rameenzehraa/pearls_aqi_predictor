@@ -87,12 +87,6 @@ DRIFT_Z_SCORE_THRESHOLD = 3
 CACHE_TTL_SECONDS = 300   # 5 minutes
 
 # ========================================================================
-# Backend API
-# ========================================================================
-# Overridden via environment variable in Streamlit Cloud secrets.
-BACKEND_API_URL = "https://pearls-aqi-api.onrender.com"
-
-# ========================================================================
 # Backfill
 # ========================================================================
 BACKFILL_START_DATE = "2025-04-25"   # 1 year back from project start

@@ -45,4 +45,5 @@ requirements_full.txt
 
 # Project-specific
 AQI_predict-1.pdf
-anaconda_projects/audit_report.md 
+anaconda_projects/
+audit_report.md 

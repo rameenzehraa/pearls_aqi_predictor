@@ -47,3 +47,8 @@ requirements_full.txt
 AQI_predict-1.pdf
 anaconda_projects/
 audit_report.md 
+
+# Local-only backups and one-off diagnostics
+notebooks/oldeda.ipynb
+pipelines/check_offline_completeness.py
+pipelines/check_online_store.py

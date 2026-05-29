@@ -115,16 +115,25 @@ def compute_predictions(features_df: pd.DataFrame) -> dict:
         latest = clean.iloc[-1]
     else:
         latest = features_df.iloc[-1].copy()
-        # Impute NaN in champion features with median from the available
-        # history. This is a defensive fallback — under normal operation,
-        # all features are present.
+        # Impute NaN champion features. During materialization catch-up the
+        # whole fetched window can be NaN for a lag column (e.g. aqi_lag_72h),
+        # so its median is *also* NaN — the prior version filled NaN with NaN
+        # and Ridge then rejected the input. Fallback chain: column median ->
+        # current aqi as a persistence proxy for lag-style features -> 0.0
+        # (caught by the hard guard below).
         medians = features_df[CHAMPION_FEATURES].median()
+        current_aqi = latest["aqi"] if not pd.isna(latest["aqi"]) else medians["aqi"]
         for f in CHAMPION_FEATURES:
             if pd.isna(latest[f]):
-                latest[f] = medians[f]
+                val = medians[f]
+                if pd.isna(val) and (f == "aqi" or f.startswith("aqi_lag")):
+                    val = current_aqi
+                latest[f] = val
 
     base_time = latest["timestamp"]
     X = latest[CHAMPION_FEATURES].to_frame().T.astype(float)
+    # Hard guard: Ridge rejects NaN natively, so guarantee none survive.
+    X = X.fillna(0.0)
 
     out = {}
     for h in HORIZONS:

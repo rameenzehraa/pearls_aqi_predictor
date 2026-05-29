@@ -106,10 +106,16 @@ def compute_predictions(features_df: pd.DataFrame) -> dict:
     if features_df.empty:
         raise ValueError("No features available")
 
-    latest = features_df.iloc[-1]
+    # Find the most recent row with no NaN in champion features.
+    # Upstream Open-Meteo occasionally produces gaps; using a stale-but-clean
+    # row is preferable to crashing or imputing during inference.
+    clean = features_df.dropna(subset=CHAMPION_FEATURES)
+    if clean.empty:
+        raise ValueError("No rows available with complete champion features")
+    latest = clean.iloc[-1]
     base_time = latest["timestamp"]
     X = latest[CHAMPION_FEATURES].to_frame().T.astype(float)
-
+    
     out = {}
     for h in HORIZONS:
         ch_scaler = CHAMPION[h]["scaler"]

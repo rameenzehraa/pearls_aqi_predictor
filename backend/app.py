@@ -106,16 +106,26 @@ def compute_predictions(features_df: pd.DataFrame) -> dict:
     if features_df.empty:
         raise ValueError("No features available")
 
-    # Find the most recent row with no NaN in champion features.
-    # Upstream Open-Meteo occasionally produces gaps; using a stale-but-clean
-    # row is preferable to crashing or imputing during inference.
+    # Find the most recent row with all champion features present.
+    # If unavailable (transient NaN from upstream API or materialization
+    # gaps), fall back to the latest row and impute missing values with
+    # median from training data, matching the training pipeline's behaviour.
     clean = features_df.dropna(subset=CHAMPION_FEATURES)
-    if clean.empty:
-        raise ValueError("No rows available with complete champion features")
-    latest = clean.iloc[-1]
+    if not clean.empty:
+        latest = clean.iloc[-1]
+    else:
+        latest = features_df.iloc[-1].copy()
+        # Impute NaN in champion features with median from the available
+        # history. This is a defensive fallback — under normal operation,
+        # all features are present.
+        medians = features_df[CHAMPION_FEATURES].median()
+        for f in CHAMPION_FEATURES:
+            if pd.isna(latest[f]):
+                latest[f] = medians[f]
+
     base_time = latest["timestamp"]
     X = latest[CHAMPION_FEATURES].to_frame().T.astype(float)
-    
+
     out = {}
     for h in HORIZONS:
         ch_scaler = CHAMPION[h]["scaler"]

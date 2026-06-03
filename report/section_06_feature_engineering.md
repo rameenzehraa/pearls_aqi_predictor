@@ -21,7 +21,7 @@ The raw inputs and the computed AQI are expanded into a candidate feature set sp
 
 - **Temporal** — `hour`, `month`, `day_of_week`, `is_weekend`, derived from the timestamp. The diurnal and seasonal cycles in Section 5 motivate `hour` and `month`; `day_of_week` and `is_weekend` were included as candidates despite the EDA showing no weekly cycle, so the selection step could confirm their irrelevance empirically rather than by assumption.
 - **Lag** — AQI at 24h, 48h, and 72h prior, plus pollutant lags (e.g. `pm2_5_lag_24h`). These are the autoregressive backbone of the model, motivated directly by the autocorrelation structure measured in Section 5.9.
-- **Rolling statistics** — 6-hour and 24-hour rolling means, which smooth short-term noise and give the model a recent-trend signal.
+- **Rolling statistics** — short-term rolling means over 6-hour and 24-hour windows (`aqi_rolling_6h`, `aqi_rolling_24h`) for recent-trend signal, plus a 30-day rolling mean and standard deviation (`rolling_30day_avg`, `rolling_30day_std`) capturing the longer-run baseline and its variability.
 - **Change-rate** — short-term deltas capturing how fast conditions are moving.
 
 Alongside these, the raw pollutants, the weather variables, and the computed AQI are themselves carried as candidate predictors.

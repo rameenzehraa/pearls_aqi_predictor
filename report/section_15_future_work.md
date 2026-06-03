@@ -16,5 +16,6 @@ The system is complete and operational; the items below are the natural next ste
 ## 15.3 Product
 
 - **More alert channels.** The tiered banner (Section 11) could be extended to SMS or webhook/push notifications so users receive hazardous-air warnings without opening the dashboard.
+- **Integrate the two-channel alert module.** A tested `utils/alerts.py` implementing hard-threshold plus statistical-vs-30-day-baseline alerting exists but is not yet wired into the dashboard, which uses the category-threshold banner. Integrating it would activate the statistical channel and the 30-day baseline features engineered for it.
 - **Pollution source attribution.** Separating combustion from dust signatures using the inter-pollutant structure observed in the EDA (Section 5) would add explanatory value beyond the composite AQI.
 - **Geographic expansion.** The architecture supports multi-city replication; instantiating additional cities was out of scope (Section 2.3.2) but is a straightforward extension given a per-city feature group and model set.

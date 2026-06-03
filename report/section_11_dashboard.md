@@ -19,7 +19,7 @@ Consistent with Section 2.3.1, each forecast card is a single point prediction a
 
 ## 11.4 Tiered alert banner
 
-The advisory banner reports the **forecast peak** — the highest AQI across the three horizons — and selects a severity tier by hard AQI threshold. Hard thresholds (rather than a purely statistical spike detector) are used because Karachi's baseline air quality is often already elevated; an alert keyed only to deviation from baseline could miss air that is objectively dangerous. The tiers and their exact wording:
+The advisory banner reports the **forecast peak** — the highest AQI across the three horizons — and selects a severity tier by hard EPA-category threshold. A category-threshold banner is the clearest public-facing signal in a city like Karachi, where the baseline is often already elevated. The tiers and their exact wording:
 
 | Tier | Threshold | Banner |
 |---|---|---|

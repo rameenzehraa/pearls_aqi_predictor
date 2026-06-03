@@ -19,6 +19,8 @@ End-to-end MLOps system that forecasts Karachi's Air Quality Index (AQI) up to 7
 
 ## Architecture
 
+![Architecture](artifacts/architecture_diagram.png)
+
 ```
 Open-Meteo API
      ↓ (hourly)
@@ -52,6 +54,16 @@ HOPSWORKS_PROJECT=<your_project>
 BACKEND_API_KEY=<shared_secret>
 ```
 
+### Run locally
+
+```bash
+# Backend (one terminal)
+python backend/app.py
+
+# Dashboard (separate terminal)
+streamlit run frontend/app.py
+```
+
 ## Project Structure
 
 ```
@@ -74,3 +86,7 @@ pytest tests/ -v
 ## Status
 
 Deployed and fully operational.
+
+## Author
+
+Built by Rameen Zehra — internship capstone, 2026.

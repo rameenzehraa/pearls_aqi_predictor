@@ -53,7 +53,7 @@ Random Forest and XGBoost go **negative** on the pruned feature set — they hav
 
 With Ridge confirmed as the model family, the next question was which features it should use. The initial feature set was 26 candidates (raw pollutants, weather variables, time-of-day, rolling stats, and lag features at multiple offsets). SHAP (SHapley Additive exPlanations) values were computed per horizon using `shap.LinearExplainer`, ranking features by mean absolute SHAP contribution to the prediction.
 
-[Figure 8.1: SHAP feature importance bar plot for the 24h Ridge model. Top features by mean |SHAP|: aqi, aqi_lag_24h, month, pm2_5_lag_24h, humidity.]
+[Figure 8.1: SHAP feature importance bar plot for the 24h Ridge model (24h horizon only). Top features by mean |SHAP| at the 24h horizon: aqi, aqi_lag_24h, month, pm2_5_lag_24h, humidity. Note: champion feature set uses the global mean |SHAP| aggregated across all three horizons — see text below.]
 
 Cross-horizon observations from the SHAP analysis:
 

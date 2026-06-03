@@ -64,8 +64,9 @@ app = Flask(__name__)
 
 
 
-# Loaded once when the Flask process starts. On Render, this happens
-# during cold start — adds ~2-3s but only on first request after sleep.
+# Loaded once when the Flask process starts. Cold start (fresh container,
+# empty /tmp/ cache): ~30-60s to download from Hopsworks. Warm restart
+# (same container, /tmp/ intact): ~1s from disk cache.
 logger.info("Loading models...")
 CHAMPION, CQR = load_all_models()
 METADATA = load_metadata()

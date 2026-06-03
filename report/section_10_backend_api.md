@@ -16,7 +16,7 @@ The backend is a Flask application (`backend/app.py`) deployed on Render's free 
 
 ## 10.3 Model loading at cold start
 
-The three champion and three CQR models are loaded once when the Flask process starts, via `load_all_models()` reading the latest versions from the Hopsworks Model Registry. Artifacts are cached to local disk ("Approach B"), so a dyno that restarts reuses the local copy rather than re-downloading from the registry. On Render's free tier the dyno sleeps after inactivity, so the first request after sleep pays a one-time cold-start cost of roughly 2–3 seconds for model loading; subsequent requests are served from the warmed process.
+The three champion and three CQR models are loaded once when the Flask process starts, via `load_all_models()` reading the latest versions from the Hopsworks Model Registry. Artifacts are cached to local disk ("Approach B"), so a dyno that restarts reuses the local copy rather than re-downloading from the registry. On Render's free tier the dyno sleeps after inactivity, so the first request after sleep pays a one-time cold-start cost of ~30 seconds (the Hopsworks model download) before serving begins; subsequent requests are served from the warmed process.
 
 ## 10.4 Prediction logic
 

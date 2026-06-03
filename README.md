@@ -15,7 +15,7 @@ End-to-end MLOps system that forecasts Karachi's Air Quality Index (AQI) up to 7
 - Hourly feature pipeline (GitHub Actions → Open-Meteo → Hopsworks Feature Store)
 - Daily training pipeline (Ridge, Random Forest, XGBoost, LSTM compared; Ridge champion across all horizons)
 - SHAP-based feature selection (pruned to top 5 features)
-- Dual-channel hazard alerts (hard threshold + statistical spike detection)
+- Hazard alerts: tiered banner on the dashboard (advisory/unhealthy/hazardous) plus a tested dual-channel alert utility (hard threshold + statistical spike detection) ready for integration
 - Streamlit frontend + Flask backend (model serving from Hopsworks Model Registry)
 
 ## Architecture

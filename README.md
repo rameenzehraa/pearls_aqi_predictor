@@ -1,4 +1,3 @@
-
 # Pearls AQI Predictor
 
 End-to-end MLOps system that forecasts Karachi's Air Quality Index (AQI) up to 72 hours ahead, with hourly automated data ingestion, daily model retraining, and a live dashboard with prediction intervals and hazard alerts.
@@ -13,8 +12,8 @@ End-to-end MLOps system that forecasts Karachi's Air Quality Index (AQI) up to 7
 
 - 24h / 48h / 72h AQI forecasts with conformal prediction intervals (p10/p90)
 - Hourly feature pipeline (GitHub Actions → Open-Meteo → Hopsworks Feature Store)
-- Daily training pipeline (Ridge, Random Forest, XGBoost, LSTM compared; Ridge champion across all horizons)
-- SHAP-based feature selection (pruned to top 5 features)
+- Daily training pipeline (Ridge, Random Forest, XGBoost, and LSTM evaluated; Ridge selected as champion across all horizons)
+- SHAP-based feature selection (5 features selected from 26 candidates via SHAP + ablation)
 - Hazard alerts: tiered banner on the dashboard (advisory/unhealthy/hazardous) plus a tested dual-channel alert utility (hard threshold + statistical spike detection) ready for integration
 - Streamlit frontend + Flask backend (model serving from Hopsworks Model Registry)
 
@@ -74,5 +73,4 @@ pytest tests/ -v
 
 ## Status
 
-Deployed and operational. 16 of 20 planned project days complete.
-```
+Deployed and fully operational.

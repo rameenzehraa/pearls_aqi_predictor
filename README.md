@@ -35,6 +35,14 @@ Hopsworks Model Registry (Ridge × 3 + CQR × 3)
 Flask backend (Render) ←→ Streamlit frontend (Streamlit Cloud)
 ```
 
+## Dashboard Preview
+
+![Current conditions and 3-day forecast](artifacts/screenshots/dashboard1.png)
+
+![Forecast trajectory and 7-day history](artifacts/screenshots/dashboard2.png)
+
+Live at: [khi-aqi.streamlit.app](https://khi-aqi.streamlit.app)
+
 ## Tech Stack
 
 Python 3.11, scikit-learn, TensorFlow (LSTM), XGBoost, SHAP, Hopsworks, GitHub Actions, Flask, Streamlit, Plotly, Pandas, NumPy.

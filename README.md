@@ -94,6 +94,7 @@ pytest tests/ -v
 ## Status
 
 Deployed and fully operational.
+> **Note:** Automated workflows (`feature_pipeline.yml`, `training_pipeline.yml`) were disabled after submission to stop failures from an unrelated platform issue; code remains intact for review.
 
 ## Author
 
